@@ -1,0 +1,72 @@
+# ──────────────────────────────────────────────────────────────
+# Route Sentinel — Docker Compose
+# Single-node deployment with MongoDB + Backend + Frontend + Nginx
+# ──────────────────────────────────────────────────────────────
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: rs-mongodb
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "127.0.0.1:27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.backend
+    container_name: rs-backend
+    restart: always
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=route_sentinel
+    ports:
+      - "127.0.0.1:8001:8001"
+    volumes:
+      - screenshots:/app/backend/screenshots
+      - ./config:/app/backend/config:ro
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.frontend
+      args:
+        - REACT_APP_BACKEND_URL=${DOMAIN_URL:-http://localhost}
+    container_name: rs-frontend
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  nginx:
+    image: nginx:alpine
+    container_name: rs-nginx
+    restart: always
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/route-sentinel.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/html:ro
+
+volumes:
+  mongo_data:
+  screenshots:
+  certbot_conf:
+  certbot_www:
