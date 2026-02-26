@@ -448,7 +448,8 @@ async def trigger_run_target(target_id: str):
     results = await run_target_checks(target, global_config)
 
     for result in results:
-        await db.route_runs.insert_one(result)
+        doc = {k: v for k, v in result.items()}
+        await db.route_runs.insert_one(doc)
         await process_check_result(db, result, alerting_config)
 
     await db.targets.update_one(
@@ -461,7 +462,7 @@ async def trigger_run_target(target_id: str):
         "total_checks": len(results),
         "successes": sum(1 for r in results if r["status"] == "success"),
         "failures": sum(1 for r in results if r["status"] == "failure"),
-        "results": results,
+        "results": [{k: v for k, v in r.items() if k != "_id"} for r in results],
     }
 
 
