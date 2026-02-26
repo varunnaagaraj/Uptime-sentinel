@@ -44,6 +44,16 @@ Build a Production-Grade Multi-Tenant Authenticated Synthetic UI Monitoring Appl
 - Timeline view for route runs
 - Real-time auto-refresh (10-15s intervals)
 - Manual trigger: Run All + Run Individual Target
+- **[Feb 26] Deployment Infrastructure:**
+  - Automated setup script (setup.sh) for OCI/Ubuntu VMs
+  - Nginx reverse proxy configs (HTTP + SSL/Let's Encrypt)
+  - Systemd service files (backend + frontend)
+  - Docker Compose with Dockerfiles (backend, frontend, MongoDB, Nginx)
+  - Environment variable templates (.env.template, .env.docker)
+  - In-app Setup Guide page with architecture, requirements, 3 deployment methods
+  - System info API endpoint (/api/system/info)
+  - Security checklist and operations commands reference
+  - Comprehensive README with full documentation
 
 ## Prioritized Backlog
 ### P0 (Done)
