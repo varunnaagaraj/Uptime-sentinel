@@ -291,24 +291,73 @@ async def check_route(browser, target_config: dict, route_config: dict, global_c
 
 
 async def run_target_checks(target_config: dict, global_config: dict) -> list:
-    """Run all route checks for a single target. Returns list of RouteCheckResult dicts."""
+    """
+    Run all route checks for a single target.
+    If auth is configured, login ONCE and reuse the browser context across all routes.
+    Returns list of RouteCheckResult dicts.
+    """
     if not target_config.get("enabled", True):
         return []
 
+    timeout_ms = target_config.get("timeoutMs", global_config.get("defaultTimeoutMs", 30000))
     results = []
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
             args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
         )
         try:
+            auth_strategy = target_config.get("auth", {}).get("strategy", "none")
+            auth_context = None
+            auth_performed = False
+
+            # If auth is needed, create one context, login, and reuse for all routes
+            if auth_strategy != "none":
+                try:
+                    auth_context = await browser.new_context(
+                        viewport={"width": 1920, "height": 1080},
+                        user_agent="RouteSentinel/1.0 SyntheticMonitor"
+                    )
+                    auth_page = await auth_context.new_page()
+                    auth_performed = await perform_auth(auth_page, target_config, timeout_ms)
+                    await auth_page.close()
+                    logger.info(f"Auth completed for '{target_config['name']}' (strategy={auth_strategy})")
+                except Exception as e:
+                    logger.error(f"Auth failed for '{target_config['name']}': {e}")
+                    # Create a failure result for auth
+                    auth_result = RouteCheckResult()
+                    auth_result.target_id = target_config["id"]
+                    auth_result.target_name = target_config["name"]
+                    auth_result.route_path = "/__auth__"
+                    auth_result.route_name = f"Authentication ({auth_strategy})"
+                    auth_result.full_url = target_config.get("auth", {}).get("formLogin", {}).get("loginUrl", target_config["baseUrl"])
+                    auth_result.status = "failure"
+                    auth_result.error_message = f"Auth failed: {str(e)[:300]}"
+                    auth_result.auth_used = True
+                    results.append(auth_result.to_dict())
+
+                    if auth_context:
+                        await auth_context.close()
+                    await browser.close()
+                    return results
+
             for route in target_config.get("routes", []):
-                result = await check_route(browser, target_config, route, global_config)
+                result = await check_route(
+                    browser, target_config, route, global_config,
+                    shared_context=auth_context
+                )
+                result.auth_used = auth_performed
                 results.append(result.to_dict())
                 logger.info(
                     f"Check [{result.status}] {target_config['name']} - {route['name']}: "
                     f"{result.duration_ms}ms"
+                    f"{' (authenticated)' if auth_performed else ''}"
                 )
+
+            if auth_context:
+                await auth_context.close()
+
         finally:
             await browser.close()
 
