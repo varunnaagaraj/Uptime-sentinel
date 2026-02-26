@@ -37,8 +37,8 @@ async def run_scheduled_check(target_config: dict):
         results = await run_target_checks(target_config, global_config)
 
         for result in results:
-            # Store result in MongoDB
-            await _db.route_runs.insert_one(result)
+            doc = {k: v for k, v in result.items()}
+            await _db.route_runs.insert_one(doc)
 
             # Process through alert engine
             await process_check_result(_db, result, alerting_config)
