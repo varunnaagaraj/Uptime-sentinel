@@ -1,6 +1,7 @@
 """
 Synthetic Monitor Runner - Playwright-based browser automation for route health checks.
 Captures screenshots, console errors, timing, and selector validation.
+Supports authenticated checks via form login, with credentials from environment variables.
 """
 import asyncio
 import logging
@@ -33,6 +34,7 @@ class RouteCheckResult:
         self.forbidden_selectors_found = []
         self.screenshot_path = None
         self.error_message = None
+        self.auth_used = False
         self.timestamp = datetime.now(timezone.utc)
 
     def to_dict(self):
@@ -52,8 +54,115 @@ class RouteCheckResult:
             "forbidden_selectors_found": self.forbidden_selectors_found,
             "screenshot_path": self.screenshot_path,
             "error_message": self.error_message,
+            "auth_used": self.auth_used,
             "timestamp": self.timestamp.isoformat(),
         }
+
+
+# ─── Auth Strategy: Form Login ─────────────────────────────────
+
+async def perform_form_login(page, auth_config: dict, timeout_ms: int):
+    """
+    Perform form-based authentication via Playwright.
+
+    1. Navigate to loginUrl
+    2. Fill username and password from env vars
+    3. Click submit
+    4. Wait for successIndicator or navigation
+    5. Fail fast if credentials env vars are missing
+    """
+    form_config = auth_config.get("formLogin", {})
+
+    login_url = form_config.get("loginUrl")
+    username_selector = form_config.get("usernameSelector", "#username")
+    password_selector = form_config.get("passwordSelector", "#password")
+    submit_selector = form_config.get("submitSelector", "button[type=submit]")
+    username_env = form_config.get("usernameEnvVar")
+    password_env = form_config.get("passwordEnvVar")
+    success_indicator = form_config.get("successIndicator")
+
+    # Fail fast: credentials MUST come from environment
+    if not username_env or not password_env:
+        raise ValueError(
+            f"Form auth requires usernameEnvVar and passwordEnvVar in config"
+        )
+
+    username = os.environ.get(username_env)
+    password = os.environ.get(password_env)
+
+    if not username or not password:
+        raise ValueError(
+            f"Missing credentials: env vars '{username_env}' and/or '{password_env}' not set. "
+            f"Set these in .env — never store credentials in config."
+        )
+
+    if not login_url:
+        raise ValueError("formLogin.loginUrl is required")
+
+    logger.info(f"Performing form login at {login_url}")
+
+    # Navigate to login page
+    await page.goto(login_url, wait_until="networkidle", timeout=timeout_ms)
+
+    # Fill credentials
+    await page.wait_for_selector(username_selector, timeout=10000)
+    await page.fill(username_selector, username)
+    await page.fill(password_selector, password)
+
+    # Submit
+    await page.click(submit_selector)
+
+    # Wait for success: either a success indicator selector, or navigation away from login
+    if success_indicator:
+        try:
+            await page.wait_for_selector(success_indicator, timeout=15000)
+            logger.info("Form login succeeded (success indicator found)")
+        except Exception:
+            raise ValueError(
+                f"Form login failed: success indicator '{success_indicator}' not found after submit"
+            )
+    else:
+        # Default: wait for navigation (URL changes from login page)
+        await page.wait_for_load_state("networkidle", timeout=15000)
+        current_url = page.url
+        if login_url.rstrip("/") == current_url.rstrip("/"):
+            raise ValueError(
+                "Form login may have failed: URL did not change after submit. "
+                "Add a successIndicator selector for reliable detection."
+            )
+        logger.info(f"Form login succeeded (navigated to {current_url})")
+
+
+async def perform_auth(page, target_config: dict, timeout_ms: int):
+    """
+    Execute the appropriate auth strategy before route checks.
+    Returns True if auth was performed, False if none needed.
+    """
+    auth = target_config.get("auth", {})
+    strategy = auth.get("strategy", "none")
+
+    if strategy == "none":
+        return False
+
+    if strategy == "form":
+        await perform_form_login(page, auth, timeout_ms)
+        return True
+
+    if strategy == "scripted":
+        script_path = auth.get("scripted", {}).get("scriptPath")
+        if script_path:
+            logger.warning(f"Scripted auth referenced '{script_path}' — not yet implemented")
+        return False
+
+    if strategy == "oauth":
+        logger.warning("OAuth auth strategy — not yet implemented")
+        return False
+
+    logger.warning(f"Unknown auth strategy: {strategy}")
+    return False
+
+
+# ─── Route Check ───────────────────────────────────────────────
 
 
 async def check_route(browser, target_config: dict, route_config: dict, global_config: dict) -> RouteCheckResult:
