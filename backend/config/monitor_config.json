@@ -57,6 +57,44 @@
           "requiredSelectors": ["h1"]
         }
       ]
+    },
+    {
+      "id": "demo-auth-form",
+      "name": "Authenticated App (Form Login)",
+      "baseUrl": "https://the-internet.herokuapp.com",
+      "enabled": true,
+      "tags": ["demo", "authenticated", "form-login"],
+      "intervalMinutes": 10,
+      "timeoutMs": 30000,
+      "auth": {
+        "strategy": "form",
+        "formLogin": {
+          "loginUrl": "https://the-internet.herokuapp.com/login",
+          "usernameSelector": "#username",
+          "passwordSelector": "#password",
+          "submitSelector": "button[type=submit]",
+          "usernameEnvVar": "DEMO_AUTH_USERNAME",
+          "passwordEnvVar": "DEMO_AUTH_PASSWORD",
+          "successIndicator": ".flash.success"
+        }
+      },
+      "routes": [
+        {
+          "path": "/secure",
+          "name": "Secure Area (Post-Login)",
+          "method": "GET",
+          "maxLoadTimeMs": 10000,
+          "requiredSelectors": [".example", "h2"],
+          "forbiddenSelectors": [".flash.error"]
+        },
+        {
+          "path": "/",
+          "name": "Public Homepage",
+          "method": "GET",
+          "maxLoadTimeMs": 8000,
+          "requiredSelectors": ["h1"]
+        }
+      ]
     }
   ],
   "alerting": {
