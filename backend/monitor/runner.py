@@ -165,8 +165,11 @@ async def perform_auth(page, target_config: dict, timeout_ms: int):
 # ─── Route Check ───────────────────────────────────────────────
 
 
-async def check_route(browser, target_config: dict, route_config: dict, global_config: dict) -> RouteCheckResult:
-    """Execute a single route health check using Playwright."""
+async def check_route(browser, target_config: dict, route_config: dict, global_config: dict, shared_context=None) -> RouteCheckResult:
+    """
+    Execute a single route health check using Playwright.
+    If shared_context is provided (from auth), reuse it to maintain session cookies.
+    """
     result = RouteCheckResult()
     result.target_id = target_config["id"]
     result.target_name = target_config["name"]
@@ -180,13 +183,17 @@ async def check_route(browser, target_config: dict, route_config: dict, global_c
 
     context = None
     page = None
+    owns_context = shared_context is None
     start_time = asyncio.get_event_loop().time()
 
     try:
-        context = await browser.new_context(
-            viewport={"width": 1920, "height": 1080},
-            user_agent="RouteSentinel/1.0 SyntheticMonitor"
-        )
+        if shared_context:
+            context = shared_context
+        else:
+            context = await browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                user_agent="RouteSentinel/1.0 SyntheticMonitor"
+            )
         page = await context.new_page()
 
         # Capture console messages
