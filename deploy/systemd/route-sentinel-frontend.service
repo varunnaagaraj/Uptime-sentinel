@@ -1,0 +1,27 @@
+[Unit]
+Description=Route Sentinel Frontend (Static File Server)
+After=network.target
+Documentation=https://github.com/your-org/route-sentinel
+
+[Service]
+Type=simple
+User=routesentinel
+Group=routesentinel
+WorkingDirectory=/opt/route-sentinel
+
+Environment=FRONTEND_PORT=3000
+
+ExecStart=/usr/bin/node /opt/route-sentinel/serve-frontend.js
+
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=route-sentinel-frontend
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target
