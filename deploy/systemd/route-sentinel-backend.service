@@ -1,0 +1,53 @@
+[Unit]
+Description=Route Sentinel Backend (FastAPI + Playwright Monitor)
+After=network.target mongod.service
+Wants=mongod.service
+Documentation=https://github.com/your-org/route-sentinel
+
+[Service]
+Type=simple
+User=routesentinel
+Group=routesentinel
+WorkingDirectory=/opt/route-sentinel/backend
+
+# Python venv
+Environment=PATH=/opt/route-sentinel/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/opt/route-sentinel
+Environment=PLAYWRIGHT_BROWSERS_PATH=/home/routesentinel/.cache/ms-playwright
+
+# Load env vars
+EnvironmentFile=/opt/route-sentinel/backend/.env
+
+# Start uvicorn (single worker — Playwright is not multi-process safe)
+ExecStart=/opt/route-sentinel/backend/.venv/bin/uvicorn server:app \
+    --host 0.0.0.0 \
+    --port 8001 \
+    --workers 1 \
+    --log-level info \
+    --access-log
+
+# Restart policy
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=route-sentinel-backend
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/route-sentinel/backend/screenshots
+ReadWritePaths=/opt/route-sentinel/backend/config
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=2G
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target
