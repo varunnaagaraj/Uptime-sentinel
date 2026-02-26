@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { path: "/targets", label: "Targets", icon: Target, testId: "nav-targets" },
   { path: "/alerts", label: "Alerts", icon: Bell, testId: "nav-alerts" },
   { path: "/config", label: "Config", icon: FileCode, testId: "nav-config" },
+  { path: "/setup", label: "Setup Guide", icon: Server, testId: "nav-setup" },
 ];
 
 export default function DashboardLayout({ children }) {
