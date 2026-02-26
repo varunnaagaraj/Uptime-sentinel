@@ -154,6 +154,11 @@ function RunItem({ run }) {
               HTTP {run.http_status}
             </Badge>
           )}
+          {run.auth_used && (
+            <Badge variant="outline" className="text-[10px] h-5 bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+              Authenticated
+            </Badge>
+          )}
         </div>
 
         {/* Expanded logs */}
