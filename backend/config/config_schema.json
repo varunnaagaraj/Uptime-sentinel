@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["version", "targets", "alerting"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["1.0"]
+    },
+    "global": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultTimeoutMs": { "type": "integer", "minimum": 1000, "maximum": 120000 },
+        "defaultIntervalMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+        "screenshotOnFailure": { "type": "boolean" },
+        "maxConcurrentChecks": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "retryOnFailure": { "type": "boolean" },
+        "retryDelayMs": { "type": "integer", "minimum": 500, "maximum": 30000 }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "baseUrl", "routes"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "name": { "type": "string", "minLength": 1 },
+          "baseUrl": { "type": "string", "format": "uri" },
+          "enabled": { "type": "boolean" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "intervalMinutes": { "type": "integer", "minimum": 1 },
+          "timeoutMs": { "type": "integer", "minimum": 1000 },
+          "auth": {
+            "type": "object",
+            "required": ["strategy"],
+            "additionalProperties": false,
+            "properties": {
+              "strategy": { "type": "string", "enum": ["none", "form", "oauth", "scripted"] },
+              "formLogin": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "loginUrl": { "type": "string" },
+                  "usernameSelector": { "type": "string" },
+                  "passwordSelector": { "type": "string" },
+                  "submitSelector": { "type": "string" },
+                  "usernameEnvVar": { "type": "string" },
+                  "passwordEnvVar": { "type": "string" },
+                  "successIndicator": { "type": "string" }
+                }
+              },
+              "oauth": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "providerUrl": { "type": "string" },
+                  "callbackUrl": { "type": "string" },
+                  "clientIdEnvVar": { "type": "string" },
+                  "clientSecretEnvVar": { "type": "string" }
+                }
+              },
+              "scripted": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "scriptPath": { "type": "string" }
+                }
+              }
+            }
+          },
+          "routes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["path", "name"],
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string" },
+                "name": { "type": "string" },
+                "method": { "type": "string", "enum": ["GET", "POST"] },
+                "requiredSelectors": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "forbiddenSelectors": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "maxLoadTimeMs": { "type": "integer", "minimum": 100 },
+                "waitForSelector": { "type": "string" },
+                "screenshotOnSuccess": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "alerting": {
+      "type": "object",
+      "required": ["consecutiveFailureThreshold"],
+      "additionalProperties": false,
+      "properties": {
+        "consecutiveFailureThreshold": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "failureRateThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "failureRateWindowMinutes": { "type": "integer", "minimum": 1 },
+        "debounceMinutes": { "type": "integer", "minimum": 1 },
+        "slack": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "webhookUrlEnvVar": { "type": "string" }
+          }
+        },
+        "email": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "smtpHostEnvVar": { "type": "string" },
+            "smtpPortEnvVar": { "type": "string" },
+            "smtpUserEnvVar": { "type": "string" },
+            "smtpPassEnvVar": { "type": "string" },
+            "fromAddress": { "type": "string" },
+            "toAddresses": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}
