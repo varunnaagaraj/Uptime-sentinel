@@ -1,0 +1,81 @@
+{
+  "version": "1.0",
+  "global": {
+    "defaultTimeoutMs": 30000,
+    "defaultIntervalMinutes": 5,
+    "screenshotOnFailure": true,
+    "maxConcurrentChecks": 3,
+    "retryOnFailure": true,
+    "retryDelayMs": 2000
+  },
+  "targets": [
+    {
+      "id": "demo-httpbin",
+      "name": "HTTPBin Demo",
+      "baseUrl": "https://httpbin.org",
+      "enabled": true,
+      "tags": ["demo", "external"],
+      "intervalMinutes": 5,
+      "timeoutMs": 30000,
+      "auth": {
+        "strategy": "none"
+      },
+      "routes": [
+        {
+          "path": "/",
+          "name": "Homepage",
+          "method": "GET",
+          "maxLoadTimeMs": 10000,
+          "requiredSelectors": ["body"]
+        },
+        {
+          "path": "/forms/post",
+          "name": "Forms Page",
+          "method": "GET",
+          "maxLoadTimeMs": 10000,
+          "requiredSelectors": ["form"]
+        }
+      ]
+    },
+    {
+      "id": "demo-example",
+      "name": "Example.com",
+      "baseUrl": "https://example.com",
+      "enabled": true,
+      "tags": ["demo", "simple"],
+      "intervalMinutes": 10,
+      "timeoutMs": 15000,
+      "auth": {
+        "strategy": "none"
+      },
+      "routes": [
+        {
+          "path": "/",
+          "name": "Main Page",
+          "method": "GET",
+          "maxLoadTimeMs": 5000,
+          "requiredSelectors": ["h1"]
+        }
+      ]
+    }
+  ],
+  "alerting": {
+    "consecutiveFailureThreshold": 3,
+    "failureRateThreshold": 0.5,
+    "failureRateWindowMinutes": 30,
+    "debounceMinutes": 15,
+    "slack": {
+      "enabled": false,
+      "webhookUrlEnvVar": "SLACK_WEBHOOK_URL"
+    },
+    "email": {
+      "enabled": false,
+      "smtpHostEnvVar": "SMTP_HOST",
+      "smtpPortEnvVar": "SMTP_PORT",
+      "smtpUserEnvVar": "SMTP_USER",
+      "smtpPassEnvVar": "SMTP_PASS",
+      "fromAddress": "alerts@routesentinel.local",
+      "toAddresses": ["admin@example.com"]
+    }
+  }
+}
