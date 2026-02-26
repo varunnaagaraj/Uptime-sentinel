@@ -18,6 +18,7 @@ function App() {
           <Route path="/targets/:targetId" element={<TargetDetailPage />} />
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/config" element={<ConfigPage />} />
+          <Route path="/setup" element={<SetupGuidePage />} />
         </Routes>
       </DashboardLayout>
     </BrowserRouter>
