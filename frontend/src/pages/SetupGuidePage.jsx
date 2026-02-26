@@ -662,6 +662,54 @@ export default function SetupGuidePage() {
         </CardContent>
       </Card>
 
+      {/* Authenticated Monitoring */}
+      <Card className="bg-[#111111] border-border/40" data-testid="auth-config-section">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Lock className="w-4 h-4 text-yellow-500" />
+            Authenticated Monitoring (Form Login)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Route Sentinel can monitor pages behind authentication. It uses Playwright to perform
+            a real form login before checking routes. The browser session (cookies) is reused for all
+            routes of the same target.
+          </p>
+          <CodeBlock code={AUTH_CONFIG_EXAMPLE} language="bash" title="Form Login Auth Setup" />
+          <div className="space-y-2 mt-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">How the Auth Flow Works</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {[
+                { step: "1", title: "Login Page", desc: "Navigate to loginUrl" },
+                { step: "2", title: "Fill Credentials", desc: "Type username/password from env vars into selectors" },
+                { step: "3", title: "Submit", desc: "Click the submit button selector" },
+                { step: "4", title: "Verify", desc: "Wait for successIndicator selector to appear" },
+                { step: "5", title: "Session Reuse", desc: "Browser cookies shared across all route checks" },
+                { step: "6", title: "Fail-Fast", desc: "If login fails, all routes marked as failed" },
+              ].map((item) => (
+                <div key={item.step} className="flex items-start gap-2.5 px-3 py-2 rounded-md bg-white/[0.02] border border-border/20">
+                  <div className="w-5 h-5 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0 text-[10px] text-yellow-500 font-mono font-bold">
+                    {item.step}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium">{item.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/5 border border-yellow-500/10 text-xs text-yellow-500">
+            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>
+              Best practice: create a dedicated monitoring service account with read-only access.
+              Never use admin credentials for synthetic monitoring.
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Environment Variables */}
       <Card className="bg-[#111111] border-border/40" data-testid="env-vars-section">
         <CardHeader className="pb-2">
