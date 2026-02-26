@@ -291,19 +291,42 @@ const MONITOR_CONFIG_EXAMPLE = `{
           "name": "Homepage",
           "maxLoadTimeMs": 5000,
           "requiredSelectors": ["#app", "nav"]
-        },
-        {
-          "path": "/login",
-          "name": "Login Page",
-          "maxLoadTimeMs": 5000,
-          "requiredSelectors": ["form", "input[type=email]"]
-        },
+        }
+      ]
+    },
+    {
+      "id": "my-authenticated-app",
+      "name": "Internal Dashboard (Form Login)",
+      "baseUrl": "https://internal.yourdomain.com",
+      "enabled": true,
+      "tags": ["internal", "authenticated"],
+      "intervalMinutes": 5,
+      "timeoutMs": 30000,
+      "auth": {
+        "strategy": "form",
+        "formLogin": {
+          "loginUrl": "https://internal.yourdomain.com/login",
+          "usernameSelector": "#username",
+          "passwordSelector": "#password",
+          "submitSelector": "button[type=submit]",
+          "usernameEnvVar": "MYAPP_USERNAME",
+          "passwordEnvVar": "MYAPP_PASSWORD",
+          "successIndicator": ".dashboard-nav"
+        }
+      },
+      "routes": [
         {
           "path": "/dashboard",
-          "name": "Dashboard",
+          "name": "Dashboard (Post-Login)",
           "maxLoadTimeMs": 10000,
-          "requiredSelectors": [".dashboard-content"],
-          "forbiddenSelectors": [".error-page"]
+          "requiredSelectors": [".dashboard-content", ".user-info"],
+          "forbiddenSelectors": [".login-form", ".error-page"]
+        },
+        {
+          "path": "/settings",
+          "name": "Settings Page",
+          "maxLoadTimeMs": 8000,
+          "requiredSelectors": ["form.settings"]
         }
       ]
     }
@@ -326,6 +349,44 @@ const MONITOR_CONFIG_EXAMPLE = `{
     }
   }
 }`;
+
+const AUTH_CONFIG_EXAMPLE = `# ── Form Login Authentication ──
+# Route Sentinel logs in via Playwright before checking protected routes.
+# Credentials are ALWAYS read from environment variables — never from config.
+
+# 1. Set credentials in .env (NEVER in monitor_config.json):
+MYAPP_USERNAME=monitoring-bot@yourcompany.com
+MYAPP_PASSWORD=your-secure-password
+
+# 2. Config entry (monitor_config.json):
+{
+  "auth": {
+    "strategy": "form",
+    "formLogin": {
+      "loginUrl": "https://app.yoursite.com/login",
+      "usernameSelector": "#email",         // CSS selector for username input
+      "passwordSelector": "#password",      // CSS selector for password input
+      "submitSelector": "button[type=submit]",  // CSS selector for login button
+      "usernameEnvVar": "MYAPP_USERNAME",   // env var name (NOT the value)
+      "passwordEnvVar": "MYAPP_PASSWORD",   // env var name (NOT the value)
+      "successIndicator": ".dashboard-nav"  // selector that appears after login
+    }
+  }
+}
+
+# 3. How it works:
+#    a) Playwright opens loginUrl in headless Chromium
+#    b) Fills username/password from env vars into the selectors
+#    c) Clicks the submit button
+#    d) Waits for successIndicator to appear (confirms login worked)
+#    e) Reuses the authenticated browser session for ALL route checks
+#    f) If login fails, ALL routes for this target are marked as failed
+
+# 4. Tips:
+#    - Use a dedicated monitoring account with read-only access
+#    - The successIndicator should be a selector only visible post-login
+#    - Session cookies are shared across all routes for the same target
+#    - If no successIndicator, it checks if URL changed from login page`;
 
 const OPERATIONS_CMDS = `# ── Service Management ──
 sudo systemctl restart route-sentinel-backend
