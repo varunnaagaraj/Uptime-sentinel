@@ -1,0 +1,27 @@
+# Route Sentinel Frontend — Dockerfile (multi-stage build)
+FROM node:20-alpine AS builder
+
+WORKDIR /app/frontend
+
+# Accept build args
+ARG REACT_APP_BACKEND_URL=http://localhost
+
+COPY frontend/package.json frontend/yarn.lock ./
+RUN yarn install --frozen-lockfile
+
+COPY frontend/ .
+ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+RUN yarn build
+
+# Production: lightweight static server
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/frontend/build ./frontend/build
+
+# Simple static file server
+COPY deploy/docker/serve-frontend.js ./serve-frontend.js
+
+EXPOSE 3000
+CMD ["node", "serve-frontend.js"]
