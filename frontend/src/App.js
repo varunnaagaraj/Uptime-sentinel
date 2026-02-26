@@ -6,6 +6,7 @@ import TargetsPage from "@/pages/TargetsPage";
 import TargetDetailPage from "@/pages/TargetDetailPage";
 import AlertsPage from "@/pages/AlertsPage";
 import ConfigPage from "@/pages/ConfigPage";
+import SetupGuidePage from "@/pages/SetupGuidePage";
 
 function App() {
   return (
