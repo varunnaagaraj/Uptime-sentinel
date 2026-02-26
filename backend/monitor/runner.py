@@ -288,7 +288,12 @@ async def check_route(browser, target_config: dict, route_config: dict, global_c
                 pass
 
     finally:
-        if context:
+        if page:
+            try:
+                await page.close()
+            except Exception:
+                pass
+        if owns_context and context:
             try:
                 await context.close()
             except Exception:
