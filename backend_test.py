@@ -311,6 +311,44 @@ class RouteSentinelTester:
         
         return success
 
+    def test_system_info_endpoint(self):
+        """Test GET /api/system/info endpoint"""
+        def validate_system_info(data):
+            required_fields = [
+                'version', 'python_version', 'platform', 'hostname',
+                'config_loaded', 'config_path', 'screenshot_dir', 'screenshot_count',
+                'disk_total_gb', 'disk_used_gb', 'disk_free_gb',
+                'mongo_url_set', 'scheduler_running'
+            ]
+            for field in required_fields:
+                if field not in data:
+                    self.log(f"Missing field in system info: {field}")
+                    return False
+            
+            # Validate data types
+            if not isinstance(data['screenshot_count'], int):
+                self.log("Screenshot count should be integer")
+                return False
+            
+            if not isinstance(data['config_loaded'], bool):
+                self.log("Config loaded should be boolean")
+                return False
+            
+            return True
+
+        success, data = self.run_test(
+            "System Information",
+            "GET",
+            "system/info",
+            validate_response=validate_system_info
+        )
+        
+        if success:
+            self.results['system_info'] = data
+            self.log(f"System info: v{data['version']}, Python {data['python_version']}, {data['disk_free_gb']}GB free")
+        
+        return success
+
     def test_monitor_run_target_endpoint(self):
         """Test POST /api/monitor/run/demo-example (60s timeout for real browser automation)"""
         def validate_monitor_run(data):
