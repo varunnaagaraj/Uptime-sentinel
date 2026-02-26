@@ -379,6 +379,138 @@ class RouteSentinelTester:
         
         return success
 
+    def test_auth_target_detail_endpoint(self):
+        """Test GET /api/targets/demo-auth-form endpoint"""
+        def validate_auth_target_detail(data):
+            required_fields = [
+                'id', 'name', 'base_url', 'recent_runs',
+                'total_checks', 'success_rate', 'status',
+                'auth_strategy', 'routes'
+            ]
+            for field in required_fields:
+                if field not in data:
+                    self.log(f"Missing field in auth target detail: {field}")
+                    return False
+            
+            # Check that auth_strategy is 'form'
+            if data['auth_strategy'] != 'form':
+                self.log(f"Expected auth_strategy 'form', got '{data['auth_strategy']}'")
+                return False
+            
+            # Check that routes include '/secure' and '/'
+            route_paths = [route['path'] for route in data.get('routes', [])]
+            if '/secure' not in route_paths or '/' not in route_paths:
+                self.log(f"Expected routes '/' and '/secure', got {route_paths}")
+                return False
+            
+            return True
+
+        success, data = self.run_test(
+            "Auth Target Detail (demo-auth-form)",
+            "GET",
+            "targets/demo-auth-form",
+            validate_response=validate_auth_target_detail
+        )
+        
+        if success:
+            self.results['auth_target_detail'] = data
+            self.log(f"Auth target: {data['name']} - {data['auth_strategy']} auth")
+        
+        return success
+
+    def test_targets_include_auth_endpoint(self):
+        """Test that GET /api/targets includes the authenticated target"""
+        def validate_targets_with_auth(data):
+            if not isinstance(data, list):
+                self.log("Targets response should be a list")
+                return False
+            
+            # Should have 3 targets including auth one
+            if len(data) < 3:
+                self.log(f"Expected at least 3 targets, got {len(data)}")
+                return False
+            
+            # Check for demo-auth-form target
+            auth_target = None
+            for target in data:
+                if target.get('id') == 'demo-auth-form':
+                    auth_target = target
+                    break
+            
+            if not auth_target:
+                self.log("demo-auth-form target not found in targets list")
+                return False
+            
+            # Check required auth target properties
+            if auth_target.get('name') != 'Authenticated App (Form Login)':
+                self.log(f"Expected auth target name 'Authenticated App (Form Login)', got '{auth_target.get('name')}'")
+                return False
+            
+            expected_tags = ['authenticated', 'form-login']
+            target_tags = auth_target.get('tags', [])
+            for tag in expected_tags:
+                if tag not in target_tags:
+                    self.log(f"Expected tag '{tag}' in auth target tags {target_tags}")
+                    return False
+            
+            return True
+
+        success, data = self.run_test(
+            "Targets List (with Auth Target)",
+            "GET",
+            "targets", 
+            validate_response=validate_targets_with_auth
+        )
+        
+        if success:
+            auth_target = next((t for t in data if t['id'] == 'demo-auth-form'), None)
+            if auth_target:
+                self.log(f"Found auth target: {auth_target['name']} with tags {auth_target.get('tags', [])}")
+        
+        return success
+
+    def test_monitor_run_auth_target_endpoint(self):
+        """Test POST /api/monitor/run/demo-auth-form (90s timeout for auth + browser automation)"""
+        def validate_auth_monitor_run(data):
+            required_fields = ['success', 'total_checks', 'successes', 'failures', 'results']
+            for field in required_fields:
+                if field not in data:
+                    self.log(f"Missing field in auth monitor run: {field}")
+                    return False
+            
+            if not isinstance(data['results'], list):
+                self.log("Results should be a list")
+                return False
+            
+            # Check that at least one result has auth_used=true
+            auth_used = False
+            for result in data['results']:
+                if result.get('auth_used'):
+                    auth_used = True
+                    break
+            
+            if not auth_used:
+                self.log("No results show auth_used=true")
+                return False
+            
+            return True
+
+        self.log("Starting authenticated Playwright check with form login (may take up to 90 seconds)...")
+        success, data = self.run_test(
+            "Monitor Run Auth Target (demo-auth-form)",
+            "POST",
+            "monitor/run/demo-auth-form",
+            timeout=95,  # Extended timeout for auth + Playwright
+            validate_response=validate_auth_monitor_run
+        )
+        
+        if success:
+            self.results['auth_monitor_run'] = data
+            auth_runs = len([r for r in data['results'] if r.get('auth_used')])
+            self.log(f"Auth monitor run: {data['successes']} passed, {data['failures']} failed, {auth_runs} authenticated runs")
+        
+        return success
+
     def run_all_tests(self):
         """Run all API tests in sequence"""
         self.log("=" * 60)
