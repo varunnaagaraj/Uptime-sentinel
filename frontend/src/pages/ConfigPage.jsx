@@ -5,8 +5,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Copy,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -15,112 +13,30 @@ import { Skeleton } from "../components/ui/skeleton";
 import { getConfig, reloadConfig } from "../lib/api";
 import { toast } from "sonner";
 
-function JsonNode({ data, depth = 0, defaultExpanded = true }) {
-  const [expanded, setExpanded] = useState(defaultExpanded && depth < 2);
-
-  if (data === null || data === undefined) {
-    return <span className="text-zinc-500">null</span>;
+function syntaxHighlight(json) {
+  if (typeof json !== "string") {
+    json = JSON.stringify(json, null, 2);
   }
-
-  if (typeof data === "string") {
-    if (data === "***REDACTED***") {
-      return (
-        <span className="text-red-400 bg-red-500/10 px-1 rounded text-xs">
-          REDACTED
-        </span>
-      );
+  return json.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+    function (match) {
+      let cls = "text-blue-400"; // number
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          cls = "text-yellow-300"; // key
+        } else if (match.includes("REDACTED")) {
+          cls = "text-red-400"; // redacted
+        } else {
+          cls = "text-green-400"; // string
+        }
+      } else if (/true|false/.test(match)) {
+        cls = match === "true" ? "text-green-400" : "text-red-400"; // boolean
+      } else if (/null/.test(match)) {
+        cls = "text-zinc-500"; // null
+      }
+      return '<span class="' + cls + '">' + match + "</span>";
     }
-    return <span className="text-green-400">"{data}"</span>;
-  }
-
-  if (typeof data === "number") {
-    return <span className="text-blue-400">{data}</span>;
-  }
-
-  if (typeof data === "boolean") {
-    return (
-      <span className={data ? "text-green-400" : "text-red-400"}>
-        {data.toString()}
-      </span>
-    );
-  }
-
-  if (Array.isArray(data)) {
-    if (data.length === 0) return <span className="text-zinc-500">[]</span>;
-
-    return (
-      <span>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground"
-        >
-          {expanded ? (
-            <ChevronDown className="w-3 h-3" />
-          ) : (
-            <ChevronRight className="w-3 h-3" />
-          )}
-          <span className="text-zinc-500">
-            [{expanded ? "" : `...${data.length} items`}
-          </span>
-        </button>
-        {expanded && (
-          <div className="ml-4 border-l border-border/20 pl-3">
-            {data.map((item, i) => (
-              <div key={i} className="py-0.5">
-                <JsonNode data={item} depth={depth + 1} />
-                {i < data.length - 1 && (
-                  <span className="text-zinc-600">,</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        {expanded && <span className="text-zinc-500">]</span>}
-        {!expanded && <span className="text-zinc-500">]</span>}
-      </span>
-    );
-  }
-
-  if (typeof data === "object") {
-    const keys = Object.keys(data);
-    if (keys.length === 0) return <span className="text-zinc-500">{"{}"}</span>;
-
-    return (
-      <span>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground"
-        >
-          {expanded ? (
-            <ChevronDown className="w-3 h-3" />
-          ) : (
-            <ChevronRight className="w-3 h-3" />
-          )}
-          <span className="text-zinc-500">
-            {"{"}{expanded ? "" : `...${keys.length} keys`}
-          </span>
-        </button>
-        {expanded && (
-          <div className="ml-4 border-l border-border/20 pl-3">
-            {keys.map((key, i) => (
-              <div key={key} className="py-0.5">
-                <span className="text-yellow-300">"{key}"</span>
-                <span className="text-zinc-500">: </span>
-                <JsonNode data={data[key]} depth={depth + 1} />
-                {i < keys.length - 1 && (
-                  <span className="text-zinc-600">,</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        {expanded && <span className="text-zinc-500">{"}"}</span>}
-        {!expanded && <span className="text-zinc-500">{"}"}</span>}
-      </span>
-    );
-  }
-
-  return <span className="text-zinc-400">{String(data)}</span>;
+  );
 }
 
 export default function ConfigPage() {
@@ -148,7 +64,7 @@ export default function ConfigPage() {
     try {
       const result = await reloadConfig();
       toast.success("Config reloaded successfully");
-      if (result.warnings?.length) {
+      if (result.warnings && result.warnings.length > 0) {
         result.warnings.forEach((w) => toast.warning(w));
       }
       fetchConfig();
@@ -176,6 +92,10 @@ export default function ConfigPage() {
       </div>
     );
   }
+
+  const highlightedJson = configData?.config
+    ? syntaxHighlight(configData.config)
+    : "";
 
   return (
     <div className="space-y-6" data-testid="config-page">
@@ -267,9 +187,10 @@ export default function ConfigPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="font-mono text-xs bg-[#0c0c0c] border border-border/30 rounded-md p-4 max-h-[600px] overflow-auto">
-              <JsonNode data={configData.config} />
-            </div>
+            <pre
+              className="font-mono text-xs bg-[#0c0c0c] border border-border/30 rounded-md p-4 max-h-[600px] overflow-auto leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: highlightedJson }}
+            />
           </CardContent>
         </Card>
       ) : (
