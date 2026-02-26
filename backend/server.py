@@ -474,6 +474,40 @@ async def scheduler_status():
     return get_scheduler_status()
 
 
+# ─── API: System Info ─────────────────────────────────────────
+
+@api_router.get("/system/info")
+async def system_info():
+    """System information for the setup guide page."""
+    import platform
+    import shutil
+
+    screenshot_dir = SCREENSHOT_DIR
+    screenshot_count = len(list(screenshot_dir.glob("*.png"))) if screenshot_dir.exists() else 0
+    disk = shutil.disk_usage("/")
+
+    return {
+        "version": "1.0.0",
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "hostname": platform.node(),
+        "config_loaded": monitor_config is not None,
+        "config_path": str(CONFIG_PATH),
+        "screenshot_dir": str(screenshot_dir),
+        "screenshot_count": screenshot_count,
+        "disk_total_gb": round(disk.total / (1024**3), 1),
+        "disk_used_gb": round(disk.used / (1024**3), 1),
+        "disk_free_gb": round(disk.free / (1024**3), 1),
+        "mongo_url_set": bool(os.environ.get("MONGO_URL")),
+        "slack_configured": bool(os.environ.get("SLACK_WEBHOOK_URL")),
+        "smtp_configured": all([
+            os.environ.get("SMTP_HOST"),
+            os.environ.get("SMTP_USER"),
+        ]),
+        "scheduler_running": get_scheduler_status().get("running", False),
+    }
+
+
 # ─── Utility ──────────────────────────────────────────────────
 
 def _derive_target_status(alert_states: list, recent_runs: list) -> str:
