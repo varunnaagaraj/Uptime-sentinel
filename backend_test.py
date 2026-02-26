@@ -395,6 +395,7 @@ class RouteSentinelTester:
             self.test_config_endpoint,
             self.test_config_reload_endpoint,
             self.test_scheduler_endpoint,
+            self.test_system_info_endpoint,  # New system info endpoint
             # self.test_monitor_run_target_endpoint,  # Commented out to avoid long wait during testing
         ]
         
