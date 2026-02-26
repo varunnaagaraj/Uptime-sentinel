@@ -1,0 +1,194 @@
+{
+  "identity": {
+    "name": "E1",
+    "mission": "Create a runtime reliability platform that feels like a tactical command center—dense, precise, and immediately trustworthy.",
+    "principles": [
+      "Tactical Precision: Every pixel must serve a purpose. Density is a feature, not a bug.",
+      "Signal over Noise: Color is for status and alerts ONLY. The UI framework disappears.",
+      "The 'Alive' Interface: Dashboards should feel like they are breathing—pulsing indicators, real-time updates.",
+      "Deep Focus: Dark mode is mandatory. Use contrast to guide the eye to anomalies."
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Inter, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, Menlo, monospace"
+    },
+    "scale": {
+      "h1": "text-2xl font-semibold tracking-tight",
+      "h2": "text-xl font-medium tracking-tight",
+      "h3": "text-lg font-medium",
+      "body": "text-sm leading-normal",
+      "small": "text-xs text-muted-foreground",
+      "mono_base": "text-xs font-mono",
+      "mono_lg": "text-sm font-mono"
+    },
+    "weights": {
+      "regular": "font-normal",
+      "medium": "font-medium",
+      "semibold": "font-semibold",
+      "bold": "font-bold"
+    }
+  },
+  "colors": {
+    "palette": {
+      "name": "Tactical Obsidian",
+      "background": {
+        "app": "#0A0A0A",
+        "card": "#111111",
+        "sidebar": "#0f0f0f",
+        "hover": "#1A1A1A"
+      },
+      "border": {
+        "default": "#27272a",
+        "active": "#3f3f46"
+      },
+      "status": {
+        "success": "#22C55E",
+        "success_dim": "rgba(34, 197, 94, 0.1)",
+        "warning": "#EAB308",
+        "warning_dim": "rgba(234, 179, 8, 0.1)",
+        "error": "#EF4444",
+        "error_dim": "rgba(239, 68, 68, 0.1)",
+        "info": "#3B82F6",
+        "info_dim": "rgba(59, 130, 246, 0.1)",
+        "neutral": "#71717a"
+      },
+      "text": {
+        "primary": "#FAFAFA",
+        "secondary": "#A1A1AA",
+        "muted": "#52525B",
+        "inverse": "#09090B"
+      }
+    },
+    "usage": {
+      "primary_action": "bg-white text-black hover:bg-gray-200",
+      "secondary_action": "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+      "destructive_action": "bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-red-900",
+      "badge_success": "bg-green-500/10 text-green-500 border-green-500/20 border",
+      "badge_error": "bg-red-500/10 text-red-500 border-red-500/20 border",
+      "badge_warning": "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 border"
+    }
+  },
+  "layout": {
+    "grid_system": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-12 gap-4 p-6",
+      "detail_view": "grid grid-cols-1 lg:grid-cols-3 gap-6",
+      "card_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+    },
+    "spacing": {
+      "page_padding": "p-6 md:p-8",
+      "card_padding": "p-5",
+      "section_gap": "gap-8",
+      "item_gap": "gap-3"
+    },
+    "containers": {
+      "card": "rounded-lg border bg-card text-card-foreground shadow-sm",
+      "panel": "rounded-md border bg-background/50 backdrop-blur-sm",
+      "main": "min-h-screen bg-background text-foreground antialiased"
+    }
+  },
+  "components": {
+    "StatusBadge": {
+      "description": "A pill-shaped indicator for health status.",
+      "props": {
+        "status": "healthy | degraded | failed | maintenance",
+        "variant": "solid | outline | glow"
+      },
+      "style": "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+    },
+    "MetricCard": {
+      "description": "Small card displaying a single key metric with a trend indicator.",
+      "structure": "Header (Title), Body (Big Number), Footer (Trend/Sparkline)",
+      "style": "bg-card border p-4 rounded-lg hover:border-primary/50 transition-colors"
+    },
+    "LogViewer": {
+      "description": "Terminal-like component for viewing console logs.",
+      "style": "font-mono text-xs bg-[#0c0c0c] border border-border/50 rounded-md p-4 overflow-x-auto max-h-[400px] text-gray-300 custom-scrollbar"
+    },
+    "Timeline": {
+      "description": "Vertical list of events (route runs or alerts).",
+      "style": "relative border-l border-border/50 ml-3 pl-6 py-2 space-y-6"
+    },
+    "ScreenshotViewer": {
+      "description": "Modal or panel to view captured screenshots of failures.",
+      "style": "aspect-video bg-muted rounded-md border flex items-center justify-center overflow-hidden relative group"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-md bg-background/80 border-b z-50 sticky top-0",
+    "glow_effects": "shadow-[0_0_15px_rgba(34,197,94,0.1)]",
+    "borders": "border border-border/40",
+    "scrolbars": "scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+  },
+  "charts": {
+    "library": "recharts",
+    "theme": {
+      "background": "transparent",
+      "textColor": "#A1A1AA",
+      "fontSize": 12,
+      "gridColor": "#27272a",
+      "tooltip": {
+        "backgroundColor": "#18181b",
+        "borderColor": "#3f3f46",
+        "color": "#fafafa"
+      }
+    },
+    "types": [
+      {
+        "name": "SuccessRateChart",
+        "type": "AreaChart",
+        "gradient": true,
+        "color": "#22C55E"
+      },
+      {
+        "name": "ResponseTimeChart",
+        "type": "LineChart",
+        "color": "#3B82F6"
+      },
+      {
+        "name": "UptimeBar",
+        "type": "BarChart",
+        "color": "#EAB308"
+      }
+    ]
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "stroke-[1.5px] w-4 h-4 or w-5 h-5",
+    "usage": {
+      "healthy": "CheckCircle2",
+      "failed": "XCircle",
+      "degraded": "AlertTriangle",
+      "dashboard": "LayoutDashboard",
+      "targets": "Target",
+      "alerts": "Bell",
+      "settings": "Settings",
+      "logs": "Terminal",
+      "time": "Clock",
+      "external": "ExternalLink"
+    }
+  },
+  "universal_guidelines": [
+    "Use 'sonner' for all toast notifications.",
+    "Do not use generic 'Inter' for headings if possible; stick to the defined typography scale.",
+    "Always include data-testid attributes for testing.",
+    "Ensure high contrast for text (APCA standards).",
+    "Use Skeleton loaders for async data.",
+    "Never use full-screen gradients. Use subtle ambient glows.",
+    "Forms must use 'react-hook-form' with 'zod' validation.",
+    "Dates must be formatted using 'date-fns' (e.g., 'MMM d, HH:mm:ss').",
+    "Interactive elements must have hover and focus states.",
+    "For 'Route Run Detail', allow collapsing/expanding of large JSON blobs or Logs."
+  ],
+  "instructions_to_main_agent": [
+    "Implement the 'Tactical Obsidian' theme in 'tailwind.config.js' first.",
+    "Create a layout wrapper 'DashboardLayout' with a sidebar navigation and top bar.",
+    "Use 'recharts' ResponsiveContainer for all charts to ensure they fit the grid.",
+    "Mock data generation is critical. Create realistic 'route runs' with timings, status codes, and console logs.",
+    "For the 'Screenshot Viewer', use a placeholder image service if no real screenshot is available, or a simple 'No Screenshot' state.",
+    "Ensure the 'Config Viewer' pretty-prints the JSON configuration.",
+    "The 'Alert History' should visually connect related state transitions (e.g., Triggered -> Resolved)."
+  ]
+}
