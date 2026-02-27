@@ -145,6 +145,59 @@ async def perform_form_login(page, auth_config: dict, timeout_ms: int):
                 wait_time = step.get("timeoutMs", 1000)
                 await asyncio.sleep(wait_time / 1000)
 
+            elif action == "switchToNewTab":
+                context = page.context
+                pages = context.pages
+                if len(pages) < 2:
+                    raise ValueError(
+                        f"Pre-step {i+1}: 'switchToNewTab' requires a newly opened tab/page from a previous step"
+                    )
+
+                # Prefer the most recently opened page that is not the current one
+                new_page = None
+                for p in reversed(pages):
+                    if p is not page:
+                        new_page = p
+                        break
+
+                if not new_page:
+                    raise ValueError(
+                        f"Pre-step {i+1}: 'switchToNewTab' could not find a different tab to switch to"
+                    )
+
+                page = new_page
+                # Ensure the new tab has finished loading before further steps
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=step_timeout)
+                except Exception:
+                    # Even if networkidle isn't reached, continue with whatever state we have
+                    await page.wait_for_load_state("load", timeout=step_timeout)
+                logger.info(f"Switched to new tab. Current URL: {page.url}")
+
+            elif action == "clickAndSwitchToPopup":
+                selector = step.get("selector")
+                if not selector:
+                    raise ValueError(
+                        f"Pre-step {i+1}: 'clickAndSwitchToPopup' requires 'selector'"
+                    )
+                await page.wait_for_selector(selector, timeout=step_timeout)
+
+                try:
+                    async with page.expect_popup() as popup_info:
+                        await page.click(selector)
+                    popup_page = await popup_info.value
+                except Exception as e:
+                    raise ValueError(
+                        f"Pre-step {i+1}: 'clickAndSwitchToPopup' did not see a popup: {e}"
+                    )
+
+                page = popup_page
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=step_timeout)
+                except Exception:
+                    await page.wait_for_load_state("load", timeout=step_timeout)
+                logger.info(f"Switched to popup. Current URL: {page.url}")
+
             else:
                 raise ValueError(f"Pre-step {i+1}: unknown action '{action}'")
 
