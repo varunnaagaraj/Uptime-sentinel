@@ -74,7 +74,7 @@ class RouteSentinelTester:
             return False, {}
 
     def test_overview_endpoint(self):
-        """Test GET /api/overview endpoint"""
+        """Test GET /api/overview - should return 3 targets and config_loaded=true"""
         def validate_overview(data):
             required_fields = [
                 'total_targets', 'enabled_targets', 'total_runs', 
@@ -86,6 +86,16 @@ class RouteSentinelTester:
                 if field not in data:
                     self.log(f"Missing field in overview: {field}")
                     return False
+            
+            # Check for exactly 3 targets
+            if data['total_targets'] != 3:
+                self.log(f"Expected 3 targets, got {data['total_targets']}")
+                return False
+            
+            # Check config_loaded is True
+            if data['config_loaded'] != True:
+                self.log(f"Expected config_loaded=true, got {data['config_loaded']}")
+                return False
             
             # Validate data types
             if not isinstance(data['scheduler'], dict):
@@ -99,7 +109,7 @@ class RouteSentinelTester:
             return True
 
         success, data = self.run_test(
-            "System Overview",
+            "System Overview (3 targets, config_loaded=true)",
             "GET", 
             "overview",
             validate_response=validate_overview
@@ -107,7 +117,7 @@ class RouteSentinelTester:
         
         if success:
             self.results['overview'] = data
-            self.log(f"Overview: {data['total_targets']} targets, {data['success_rate']}% success rate")
+            self.log(f"Overview: {data['total_targets']} targets, config_loaded={data['config_loaded']}, {data['success_rate']}% success rate")
         
         return success
 
