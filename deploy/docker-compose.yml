@@ -33,8 +33,6 @@ services:
     environment:
       - MONGO_URL=mongodb://mongodb:27017
       - DB_NAME=route_sentinel
-    ports:
-      - "127.0.0.1:8001:8001"
     volumes:
       - screenshots:/app/backend/screenshots
       - ./config:/app/backend/config:ro
@@ -47,8 +45,6 @@ services:
         - REACT_APP_BACKEND_URL=${DOMAIN_URL:-http://localhost}
     container_name: rs-frontend
     restart: always
-    ports:
-      - "127.0.0.1:3000:3000"
 
   nginx:
     image: nginx:alpine
