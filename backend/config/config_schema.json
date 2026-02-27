@@ -51,7 +51,27 @@
                   "submitSelector": { "type": "string" },
                   "usernameEnvVar": { "type": "string" },
                   "passwordEnvVar": { "type": "string" },
-                  "successIndicator": { "type": "string" }
+                  "successIndicator": { "type": "string" },
+                  "preSteps": {
+                    "type": "array",
+                    "description": "Steps to execute BEFORE reaching the login form (e.g. click Sign In on a landing page)",
+                    "items": {
+                      "type": "object",
+                      "required": ["action"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "action": {
+                          "type": "string",
+                          "enum": ["navigate", "click", "waitForSelector", "waitForNavigation", "fill", "waitMs"]
+                        },
+                        "url": { "type": "string", "description": "URL for navigate action" },
+                        "selector": { "type": "string", "description": "CSS selector for click/waitForSelector/fill actions" },
+                        "value": { "type": "string", "description": "Value for fill action" },
+                        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 60000, "description": "Timeout for wait actions" },
+                        "description": { "type": "string", "description": "Human-readable step description" }
+                      }
+                    }
+                  }
                 }
               },
               "oauth": {
