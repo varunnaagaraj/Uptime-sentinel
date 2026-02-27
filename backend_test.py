@@ -526,10 +526,10 @@ class RouteSentinelTester:
                 self.log("demo-auth-form target not found in targets list")
                 return False
             
-            # Check auth strategy is 'form' - this is the key requirement
-            auth_strategy = auth_target.get('auth', {}).get('strategy')
+            # Check auth_strategy field directly (not nested in auth object)
+            auth_strategy = auth_target.get('auth_strategy')
             if auth_strategy != 'form':
-                self.log(f"Expected auth strategy 'form', got '{auth_strategy}'")
+                self.log(f"Expected auth_strategy 'form', got '{auth_strategy}'")
                 return False
             
             return True
@@ -544,7 +544,7 @@ class RouteSentinelTester:
         if success:
             auth_target = next((t for t in data if t['id'] == 'demo-auth-form'), None)
             if auth_target:
-                self.log(f"Found auth target: {auth_target['name']} with auth strategy: {auth_target.get('auth', {}).get('strategy')}")
+                self.log(f"Found auth target: {auth_target['name']} with auth_strategy: {auth_target.get('auth_strategy')}")
         
         return success
 
