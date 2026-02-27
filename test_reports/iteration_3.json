@@ -1,0 +1,40 @@
+{
+  "summary": "Successfully tested Route Sentinel changes: removed Emergent branding and added multi-step authentication support via preSteps",
+  "backend_issues": {
+    "critical_bugs": [],
+    "flaky_endpoints": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "✅ GET /api/overview returns 3 targets with config_loaded=true",
+    "✅ GET /api/targets returns exactly 3 targets including demo-auth-form with auth_strategy='form'",
+    "✅ GET /api/config returns config with preSteps schema support in formLogin",
+    "✅ POST /api/config/validate accepts config with preSteps array in formLogin",
+    "✅ POST /api/monitor/run/demo-auth-form performs real Playwright form login (90s timeout) with auth_used=true",
+    "✅ Root HTML at / contains no 'Emergent', 'PostHog', or 'Oracle Health' references",
+    "✅ No floating badge button visible in bottom-right corner",
+    "✅ Targets page shows 3 target cards including authenticated target",
+    "✅ Target detail page /targets/demo-auth-form shows 'Authenticated' badges on runs",
+    "✅ Setup Guide shows 'Authenticated Monitoring (Form Login)' section with 7-step auth flow",
+    "✅ Setup Guide contains 'Multi-Step preSteps Reference' code block",
+    "✅ All main pages load correctly: Overview, Targets, Alerts, Config, Setup Guide"
+  ],
+  "test_report_links": [
+    "/app/backend_test.py"
+  ],
+  "action_item_for_main_agent": "",
+  "updated_files": [
+    "/app/backend_test.py"
+  ],
+  "success_percentage": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100% (12/12 tests passed)", 
+    "integration": "100% (auth flow working correctly)"
+  },
+  "should_call_test_agent_after_fix": "false",
+  "should_main_agent_test_itself": "true"
+}
