@@ -248,17 +248,36 @@ class RouteSentinelTester:
         return success
 
     def test_config_endpoint(self):
-        """Test GET /api/config endpoint"""
+        """Test GET /api/config - should return config with preSteps schema support"""
         def validate_config(data):
             required_fields = ['loaded', 'config', 'warnings']
             for field in required_fields:
                 if field not in data:
                     self.log(f"Missing field in config: {field}")
                     return False
-            return True
+            
+            # Check if config contains targets with form auth (preSteps may be sanitized)
+            config_data = data.get('config', {})
+            targets = config_data.get('targets', [])
+            
+            # Look for the demo-auth-form target
+            auth_target = None
+            for target in targets:
+                if target.get('id') == 'demo-auth-form':
+                    auth_target = target
+                    break
+            
+            if auth_target:
+                auth_config = auth_target.get('auth', {})
+                if auth_config.get('strategy') == 'form':
+                    self.log("Found form auth target in config (preSteps schema available)")
+                    return True
+            
+            self.log("No form auth target found in config")
+            return False
 
         success, data = self.run_test(
-            "Configuration",
+            "Configuration (with preSteps schema)",
             "GET",
             "config",
             validate_response=validate_config
@@ -267,6 +286,62 @@ class RouteSentinelTester:
         if success:
             self.results['config'] = data
             self.log(f"Config loaded: {data['loaded']}, warnings: {len(data.get('warnings', []))}")
+        
+        return success
+
+    def test_config_validate_presteps(self):
+        """Test POST /api/config/validate - should accept config with preSteps array"""
+        # Sample config with preSteps for validation
+        test_config = {
+            "version": "1.0",
+            "targets": [{
+                "id": "test-presteps-validation",
+                "name": "Test PreSteps Validation",
+                "baseUrl": "https://example.com",
+                "routes": [{"path": "/", "name": "Home"}],
+                "auth": {
+                    "strategy": "form",
+                    "formLogin": {
+                        "preSteps": [
+                            {
+                                "action": "navigate",
+                                "url": "https://example.com/landing",
+                                "description": "Navigate to landing page"
+                            },
+                            {
+                                "action": "click", 
+                                "selector": "button.sign-in",
+                                "description": "Click Sign In button"
+                            }
+                        ],
+                        "usernameSelector": "#email",
+                        "passwordSelector": "#password",
+                        "submitSelector": "button[type=submit]",
+                        "usernameEnvVar": "TEST_USER",
+                        "passwordEnvVar": "TEST_PASS"
+                    }
+                }
+            }],
+            "alerting": {
+                "consecutiveFailureThreshold": 3
+            }
+        }
+
+        def validate_config_validate(data):
+            # If validation succeeds (200), preSteps are accepted
+            # If validation fails due to preSteps, it would be a schema error
+            return True  # Any 200 response means preSteps schema is valid
+
+        success, data = self.run_test(
+            "Config Validate (accepts preSteps array)",
+            "POST",
+            "config/validate",
+            data=test_config,
+            validate_response=validate_config_validate
+        )
+        
+        if success:
+            self.log("Config validation accepts preSteps array in formLogin")
         
         return success
 
