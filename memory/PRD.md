@@ -53,7 +53,15 @@ Build a Production-Grade Multi-Tenant Authenticated Synthetic UI Monitoring Appl
   - In-app Setup Guide page with architecture, requirements, 3 deployment methods
   - System info API endpoint (/api/system/info)
   - Security checklist and operations commands reference
-  - Comprehensive README with full documentation
+  - **[Feb 27] Multi-step Auth + Branding Cleanup:**
+  - Removed all Emergent/PostHog/Oracle branding from index.html
+  - Removed floating badge button and PostHog tracking script
+  - Implemented multi-step authentication via `preSteps` in form login config
+  - Supported actions: navigate, click, waitForSelector, waitForNavigation, fill, waitMs
+  - Updated JSON schema to validate preSteps array
+  - Session cookies shared across all routes after auth (single login, multiple checks)
+  - Updated Setup Guide with multi-step auth docs and preSteps reference
+  - 7-step auth flow documentation with visual guide
 
 ## Prioritized Backlog
 ### P0 (Done)

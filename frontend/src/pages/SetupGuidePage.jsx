@@ -358,35 +358,107 @@ const AUTH_CONFIG_EXAMPLE = `# ── Form Login Authentication ──
 MYAPP_USERNAME=monitoring-bot@yourcompany.com
 MYAPP_PASSWORD=your-secure-password
 
-# 2. Config entry (monitor_config.json):
+# 2. Simple direct login (one-page form):
 {
   "auth": {
     "strategy": "form",
     "formLogin": {
       "loginUrl": "https://app.yoursite.com/login",
-      "usernameSelector": "#email",         // CSS selector for username input
-      "passwordSelector": "#password",      // CSS selector for password input
-      "submitSelector": "button[type=submit]",  // CSS selector for login button
-      "usernameEnvVar": "MYAPP_USERNAME",   // env var name (NOT the value)
-      "passwordEnvVar": "MYAPP_PASSWORD",   // env var name (NOT the value)
-      "successIndicator": ".dashboard-nav"  // selector that appears after login
+      "usernameSelector": "#email",
+      "passwordSelector": "#password",
+      "submitSelector": "button[type=submit]",
+      "usernameEnvVar": "MYAPP_USERNAME",
+      "passwordEnvVar": "MYAPP_PASSWORD",
+      "successIndicator": ".dashboard-nav"
     }
   }
 }
 
-# 3. How it works:
-#    a) Playwright opens loginUrl in headless Chromium
-#    b) Fills username/password from env vars into the selectors
-#    c) Clicks the submit button
-#    d) Waits for successIndicator to appear (confirms login worked)
-#    e) Reuses the authenticated browser session for ALL route checks
-#    f) If login fails, ALL routes for this target are marked as failed
+# 3. Multi-step login (landing page → click Sign In → login form):
+{
+  "auth": {
+    "strategy": "form",
+    "formLogin": {
+      "preSteps": [
+        {
+          "action": "navigate",
+          "url": "https://app.yoursite.com",
+          "description": "Go to landing page"
+        },
+        {
+          "action": "click",
+          "selector": "a[href='/login'], button:has-text('Sign In')",
+          "description": "Click the Sign In button on landing page"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "#email",
+          "description": "Wait for login form to appear"
+        }
+      ],
+      "usernameSelector": "#email",
+      "passwordSelector": "#password",
+      "submitSelector": "button[type=submit]",
+      "usernameEnvVar": "MYAPP_USERNAME",
+      "passwordEnvVar": "MYAPP_PASSWORD",
+      "successIndicator": ".dashboard-nav"
+    }
+  }
+}`;
 
-# 4. Tips:
-#    - Use a dedicated monitoring account with read-only access
-#    - The successIndicator should be a selector only visible post-login
-#    - Session cookies are shared across all routes for the same target
-#    - If no successIndicator, it checks if URL changed from login page`;
+const PRESTEPS_EXAMPLE = `# preSteps — Available actions:
+#
+# navigate:          Go to a URL
+#   { "action": "navigate", "url": "https://..." }
+#
+# click:             Click an element (waits for navigation after)
+#   { "action": "click", "selector": "button.sign-in" }
+#
+# waitForSelector:   Wait for an element to appear on the page
+#   { "action": "waitForSelector", "selector": "#login-form" }
+#
+# waitForNavigation: Wait for page to finish loading
+#   { "action": "waitForNavigation" }
+#
+# fill:              Type text into an input (useful for multi-page forms)
+#   { "action": "fill", "selector": "#org-name", "value": "mycompany" }
+#
+# waitMs:            Wait a fixed time (last resort)
+#   { "action": "waitMs", "timeoutMs": 2000 }
+#
+# ── Example: SSO-style multi-step login ──
+# Landing page → "Sign In with SSO" → Org selection → Login form
+{
+  "preSteps": [
+    {
+      "action": "navigate",
+      "url": "https://app.example.com",
+      "description": "Open the app"
+    },
+    {
+      "action": "click",
+      "selector": "[data-testid='login-btn']",
+      "description": "Click Sign In on the hero section"
+    },
+    {
+      "action": "waitForSelector",
+      "selector": "#org-selector",
+      "timeoutMs": 10000,
+      "description": "Wait for org selection page"
+    },
+    {
+      "action": "fill",
+      "selector": "#org-name",
+      "value": "mycompany",
+      "description": "Enter organization name"
+    },
+    {
+      "action": "click",
+      "selector": "button.continue",
+      "description": "Continue to login form"
+    }
+  ]
+}`;
 
 const OPERATIONS_CMDS = `# ── Service Management ──
 sudo systemctl restart route-sentinel-backend
@@ -674,19 +746,21 @@ export default function SetupGuidePage() {
           <p className="text-sm text-muted-foreground">
             Route Sentinel can monitor pages behind authentication. It uses Playwright to perform
             a real form login before checking routes. The browser session (cookies) is reused for all
-            routes of the same target.
+            routes of the same target. Supports both direct logins and multi-step flows.
           </p>
           <CodeBlock code={AUTH_CONFIG_EXAMPLE} language="bash" title="Form Login Auth Setup" />
+
           <div className="space-y-2 mt-3">
             <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">How the Auth Flow Works</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
-                { step: "1", title: "Login Page", desc: "Navigate to loginUrl" },
-                { step: "2", title: "Fill Credentials", desc: "Type username/password from env vars into selectors" },
-                { step: "3", title: "Submit", desc: "Click the submit button selector" },
-                { step: "4", title: "Verify", desc: "Wait for successIndicator selector to appear" },
-                { step: "5", title: "Session Reuse", desc: "Browser cookies shared across all route checks" },
-                { step: "6", title: "Fail-Fast", desc: "If login fails, all routes marked as failed" },
+                { step: "1", title: "Pre-Steps (optional)", desc: "Navigate to landing page, click Sign In button, wait for redirect" },
+                { step: "2", title: "Login Form", desc: "Navigate to loginUrl (skipped if preSteps already reached it)" },
+                { step: "3", title: "Fill Credentials", desc: "Type username/password from env vars into selectors" },
+                { step: "4", title: "Submit", desc: "Click the submit button selector" },
+                { step: "5", title: "Verify", desc: "Wait for successIndicator selector to appear" },
+                { step: "6", title: "Session Reuse", desc: "Browser cookies shared across all route checks" },
+                { step: "7", title: "Fail-Fast", desc: "If login fails, all routes for this target are marked as failed" },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-2.5 px-3 py-2 rounded-md bg-white/[0.02] border border-border/20">
                   <div className="w-5 h-5 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0 text-[10px] text-yellow-500 font-mono font-bold">
@@ -700,6 +774,12 @@ export default function SetupGuidePage() {
               ))}
             </div>
           </div>
+
+          <div className="mt-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2">Multi-Step preSteps Reference</p>
+            <CodeBlock code={PRESTEPS_EXAMPLE} language="json" title="preSteps Actions Reference" />
+          </div>
+
           <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/5 border border-yellow-500/10 text-xs text-yellow-500">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>

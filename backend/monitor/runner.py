@@ -65,11 +65,13 @@ async def perform_form_login(page, auth_config: dict, timeout_ms: int):
     """
     Perform form-based authentication via Playwright.
 
-    1. Navigate to loginUrl
-    2. Fill username and password from env vars
-    3. Click submit
-    4. Wait for successIndicator or navigation
-    5. Fail fast if credentials env vars are missing
+    Supports multi-step login flows:
+    1. Execute preSteps (navigate to landing page, click Sign In button, etc.)
+    2. Navigate to loginUrl (if no preSteps brought us there already)
+    3. Fill username and password from env vars
+    4. Click submit
+    5. Wait for successIndicator or navigation
+    6. Fail fast if credentials env vars are missing
     """
     form_config = auth_config.get("formLogin", {})
 
@@ -80,6 +82,7 @@ async def perform_form_login(page, auth_config: dict, timeout_ms: int):
     username_env = form_config.get("usernameEnvVar")
     password_env = form_config.get("passwordEnvVar")
     success_indicator = form_config.get("successIndicator")
+    pre_steps = form_config.get("preSteps", [])
 
     # Fail fast: credentials MUST come from environment
     if not username_env or not password_env:
@@ -96,23 +99,81 @@ async def perform_form_login(page, auth_config: dict, timeout_ms: int):
             f"Set these in .env — never store credentials in config."
         )
 
-    if not login_url:
-        raise ValueError("formLogin.loginUrl is required")
+    # ─── Execute pre-steps (multi-step auth) ──────────────────
+    if pre_steps:
+        logger.info(f"Executing {len(pre_steps)} pre-login step(s)")
+        for i, step in enumerate(pre_steps):
+            action = step.get("action")
+            desc = step.get("description", f"Step {i+1}: {action}")
+            step_timeout = step.get("timeoutMs", 15000)
 
-    logger.info(f"Performing form login at {login_url}")
+            logger.info(f"  Pre-step {i+1}/{len(pre_steps)}: {desc}")
 
-    # Navigate to login page
-    await page.goto(login_url, wait_until="networkidle", timeout=timeout_ms)
+            if action == "navigate":
+                url = step.get("url")
+                if not url:
+                    raise ValueError(f"Pre-step {i+1}: 'navigate' requires 'url'")
+                await page.goto(url, wait_until="networkidle", timeout=step_timeout)
 
-    # Fill credentials
+            elif action == "click":
+                selector = step.get("selector")
+                if not selector:
+                    raise ValueError(f"Pre-step {i+1}: 'click' requires 'selector'")
+                await page.wait_for_selector(selector, timeout=step_timeout)
+                await page.click(selector)
+                # Wait for navigation or new content after click
+                await page.wait_for_load_state("networkidle", timeout=step_timeout)
+
+            elif action == "waitForSelector":
+                selector = step.get("selector")
+                if not selector:
+                    raise ValueError(f"Pre-step {i+1}: 'waitForSelector' requires 'selector'")
+                await page.wait_for_selector(selector, timeout=step_timeout)
+
+            elif action == "waitForNavigation":
+                await page.wait_for_load_state("networkidle", timeout=step_timeout)
+
+            elif action == "fill":
+                selector = step.get("selector")
+                value = step.get("value", "")
+                if not selector:
+                    raise ValueError(f"Pre-step {i+1}: 'fill' requires 'selector'")
+                await page.wait_for_selector(selector, timeout=step_timeout)
+                await page.fill(selector, value)
+
+            elif action == "waitMs":
+                wait_time = step.get("timeoutMs", 1000)
+                await asyncio.sleep(wait_time / 1000)
+
+            else:
+                raise ValueError(f"Pre-step {i+1}: unknown action '{action}'")
+
+            logger.info(f"  Pre-step {i+1} complete. Current URL: {page.url}")
+
+    # ─── Navigate to login form (if not already there from preSteps) ──
+    if login_url:
+        current_url = page.url
+        # Only navigate if we're not already on the login page
+        login_url_clean = login_url.rstrip("/")
+        current_clean = current_url.rstrip("/").split("?")[0].split("#")[0]
+        if current_clean != login_url_clean:
+            logger.info(f"Navigating to login form: {login_url}")
+            await page.goto(login_url, wait_until="networkidle", timeout=timeout_ms)
+        else:
+            logger.info(f"Already on login page: {current_url}")
+    elif not pre_steps:
+        raise ValueError("formLogin.loginUrl is required when no preSteps are defined")
+
+    # ─── Fill credentials ─────────────────────────────────────
+    logger.info(f"Filling login form (username: {username_selector}, password: {password_selector})")
     await page.wait_for_selector(username_selector, timeout=10000)
     await page.fill(username_selector, username)
     await page.fill(password_selector, password)
 
-    # Submit
+    # ─── Submit ───────────────────────────────────────────────
     await page.click(submit_selector)
 
-    # Wait for success: either a success indicator selector, or navigation away from login
+    # ─── Wait for success ─────────────────────────────────────
     if success_indicator:
         try:
             await page.wait_for_selector(success_indicator, timeout=15000)
@@ -125,7 +186,7 @@ async def perform_form_login(page, auth_config: dict, timeout_ms: int):
         # Default: wait for navigation (URL changes from login page)
         await page.wait_for_load_state("networkidle", timeout=15000)
         current_url = page.url
-        if login_url.rstrip("/") == current_url.rstrip("/"):
+        if login_url and login_url.rstrip("/") == current_url.rstrip("/"):
             raise ValueError(
                 "Form login may have failed: URL did not change after submit. "
                 "Add a successIndicator selector for reliable detection."

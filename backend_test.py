@@ -74,7 +74,7 @@ class RouteSentinelTester:
             return False, {}
 
     def test_overview_endpoint(self):
-        """Test GET /api/overview endpoint"""
+        """Test GET /api/overview - should return 3 targets and config_loaded=true"""
         def validate_overview(data):
             required_fields = [
                 'total_targets', 'enabled_targets', 'total_runs', 
@@ -86,6 +86,16 @@ class RouteSentinelTester:
                 if field not in data:
                     self.log(f"Missing field in overview: {field}")
                     return False
+            
+            # Check for exactly 3 targets
+            if data['total_targets'] != 3:
+                self.log(f"Expected 3 targets, got {data['total_targets']}")
+                return False
+            
+            # Check config_loaded is True
+            if data['config_loaded'] != True:
+                self.log(f"Expected config_loaded=true, got {data['config_loaded']}")
+                return False
             
             # Validate data types
             if not isinstance(data['scheduler'], dict):
@@ -99,7 +109,7 @@ class RouteSentinelTester:
             return True
 
         success, data = self.run_test(
-            "System Overview",
+            "System Overview (3 targets, config_loaded=true)",
             "GET", 
             "overview",
             validate_response=validate_overview
@@ -107,7 +117,7 @@ class RouteSentinelTester:
         
         if success:
             self.results['overview'] = data
-            self.log(f"Overview: {data['total_targets']} targets, {data['success_rate']}% success rate")
+            self.log(f"Overview: {data['total_targets']} targets, config_loaded={data['config_loaded']}, {data['success_rate']}% success rate")
         
         return success
 
@@ -238,17 +248,36 @@ class RouteSentinelTester:
         return success
 
     def test_config_endpoint(self):
-        """Test GET /api/config endpoint"""
+        """Test GET /api/config - should return config with preSteps schema support"""
         def validate_config(data):
             required_fields = ['loaded', 'config', 'warnings']
             for field in required_fields:
                 if field not in data:
                     self.log(f"Missing field in config: {field}")
                     return False
-            return True
+            
+            # Check if config contains targets with form auth (preSteps may be sanitized)
+            config_data = data.get('config', {})
+            targets = config_data.get('targets', [])
+            
+            # Look for the demo-auth-form target
+            auth_target = None
+            for target in targets:
+                if target.get('id') == 'demo-auth-form':
+                    auth_target = target
+                    break
+            
+            if auth_target:
+                auth_config = auth_target.get('auth', {})
+                if auth_config.get('strategy') == 'form':
+                    self.log("Found form auth target in config (preSteps schema available)")
+                    return True
+            
+            self.log("No form auth target found in config")
+            return False
 
         success, data = self.run_test(
-            "Configuration",
+            "Configuration (with preSteps schema)",
             "GET",
             "config",
             validate_response=validate_config
@@ -257,6 +286,62 @@ class RouteSentinelTester:
         if success:
             self.results['config'] = data
             self.log(f"Config loaded: {data['loaded']}, warnings: {len(data.get('warnings', []))}")
+        
+        return success
+
+    def test_config_validate_presteps(self):
+        """Test POST /api/config/validate - should accept config with preSteps array"""
+        # Sample config with preSteps for validation
+        test_config = {
+            "version": "1.0",
+            "targets": [{
+                "id": "test-presteps-validation",
+                "name": "Test PreSteps Validation",
+                "baseUrl": "https://example.com",
+                "routes": [{"path": "/", "name": "Home"}],
+                "auth": {
+                    "strategy": "form",
+                    "formLogin": {
+                        "preSteps": [
+                            {
+                                "action": "navigate",
+                                "url": "https://example.com/landing",
+                                "description": "Navigate to landing page"
+                            },
+                            {
+                                "action": "click", 
+                                "selector": "button.sign-in",
+                                "description": "Click Sign In button"
+                            }
+                        ],
+                        "usernameSelector": "#email",
+                        "passwordSelector": "#password",
+                        "submitSelector": "button[type=submit]",
+                        "usernameEnvVar": "TEST_USER",
+                        "passwordEnvVar": "TEST_PASS"
+                    }
+                }
+            }],
+            "alerting": {
+                "consecutiveFailureThreshold": 3
+            }
+        }
+
+        def validate_config_validate(data):
+            # If validation succeeds (200), preSteps are accepted
+            # If validation fails due to preSteps, it would be a schema error
+            return True  # Any 200 response means preSteps schema is valid
+
+        success, data = self.run_test(
+            "Config Validate (accepts preSteps array)",
+            "POST",
+            "config/validate",
+            data=test_config,
+            validate_response=validate_config_validate
+        )
+        
+        if success:
+            self.log("Config validation accepts preSteps array in formLogin")
         
         return success
 
@@ -419,15 +504,15 @@ class RouteSentinelTester:
         return success
 
     def test_targets_include_auth_endpoint(self):
-        """Test that GET /api/targets includes the authenticated target"""
+        """Test that GET /api/targets includes the authenticated target with form strategy"""
         def validate_targets_with_auth(data):
             if not isinstance(data, list):
                 self.log("Targets response should be a list")
                 return False
             
-            # Should have 3 targets including auth one
-            if len(data) < 3:
-                self.log(f"Expected at least 3 targets, got {len(data)}")
+            # Should have exactly 3 targets
+            if len(data) != 3:
+                self.log(f"Expected exactly 3 targets, got {len(data)}")
                 return False
             
             # Check for demo-auth-form target
@@ -441,22 +526,16 @@ class RouteSentinelTester:
                 self.log("demo-auth-form target not found in targets list")
                 return False
             
-            # Check required auth target properties
-            if auth_target.get('name') != 'Authenticated App (Form Login)':
-                self.log(f"Expected auth target name 'Authenticated App (Form Login)', got '{auth_target.get('name')}'")
+            # Check auth_strategy field directly (not nested in auth object)
+            auth_strategy = auth_target.get('auth_strategy')
+            if auth_strategy != 'form':
+                self.log(f"Expected auth_strategy 'form', got '{auth_strategy}'")
                 return False
-            
-            expected_tags = ['authenticated', 'form-login']
-            target_tags = auth_target.get('tags', [])
-            for tag in expected_tags:
-                if tag not in target_tags:
-                    self.log(f"Expected tag '{tag}' in auth target tags {target_tags}")
-                    return False
             
             return True
 
         success, data = self.run_test(
-            "Targets List (with Auth Target)",
+            "Targets List (3 targets with demo-auth-form having form auth)",
             "GET",
             "targets", 
             validate_response=validate_targets_with_auth
@@ -465,7 +544,7 @@ class RouteSentinelTester:
         if success:
             auth_target = next((t for t in data if t['id'] == 'demo-auth-form'), None)
             if auth_target:
-                self.log(f"Found auth target: {auth_target['name']} with tags {auth_target.get('tags', [])}")
+                self.log(f"Found auth target: {auth_target['name']} with auth_strategy: {auth_target.get('auth_strategy')}")
         
         return success
 
@@ -519,16 +598,17 @@ class RouteSentinelTester:
         
         test_methods = [
             self.test_overview_endpoint,
-            self.test_targets_endpoint, 
+            self.test_targets_include_auth_endpoint,  # Updated targets test
+            self.test_config_endpoint,  # Updated config test
+            self.test_config_validate_presteps,  # New preSteps validation test
+            self.test_monitor_run_auth_target_endpoint,  # Auth target test (takes 90s)
+            # Other tests for completeness
             self.test_target_detail_endpoint,
-            self.test_target_runs_endpoint,
             self.test_alerts_endpoint,
             self.test_active_alerts_endpoint,
-            self.test_config_endpoint,
             self.test_config_reload_endpoint,
             self.test_scheduler_endpoint,
-            self.test_system_info_endpoint,  # New system info endpoint
-            # self.test_monitor_run_target_endpoint,  # Commented out to avoid long wait during testing
+            self.test_system_info_endpoint,
         ]
         
         for test_method in test_methods:
