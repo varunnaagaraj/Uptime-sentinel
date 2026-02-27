@@ -419,15 +419,15 @@ class RouteSentinelTester:
         return success
 
     def test_targets_include_auth_endpoint(self):
-        """Test that GET /api/targets includes the authenticated target"""
+        """Test that GET /api/targets includes the authenticated target with form strategy"""
         def validate_targets_with_auth(data):
             if not isinstance(data, list):
                 self.log("Targets response should be a list")
                 return False
             
-            # Should have 3 targets including auth one
-            if len(data) < 3:
-                self.log(f"Expected at least 3 targets, got {len(data)}")
+            # Should have exactly 3 targets
+            if len(data) != 3:
+                self.log(f"Expected exactly 3 targets, got {len(data)}")
                 return False
             
             # Check for demo-auth-form target
@@ -441,22 +441,16 @@ class RouteSentinelTester:
                 self.log("demo-auth-form target not found in targets list")
                 return False
             
-            # Check required auth target properties
-            if auth_target.get('name') != 'Authenticated App (Form Login)':
-                self.log(f"Expected auth target name 'Authenticated App (Form Login)', got '{auth_target.get('name')}'")
+            # Check auth strategy is 'form' - this is the key requirement
+            auth_strategy = auth_target.get('auth', {}).get('strategy')
+            if auth_strategy != 'form':
+                self.log(f"Expected auth strategy 'form', got '{auth_strategy}'")
                 return False
-            
-            expected_tags = ['authenticated', 'form-login']
-            target_tags = auth_target.get('tags', [])
-            for tag in expected_tags:
-                if tag not in target_tags:
-                    self.log(f"Expected tag '{tag}' in auth target tags {target_tags}")
-                    return False
             
             return True
 
         success, data = self.run_test(
-            "Targets List (with Auth Target)",
+            "Targets List (3 targets with demo-auth-form having form auth)",
             "GET",
             "targets", 
             validate_response=validate_targets_with_auth
@@ -465,7 +459,7 @@ class RouteSentinelTester:
         if success:
             auth_target = next((t for t in data if t['id'] == 'demo-auth-form'), None)
             if auth_target:
-                self.log(f"Found auth target: {auth_target['name']} with tags {auth_target.get('tags', [])}")
+                self.log(f"Found auth target: {auth_target['name']} with auth strategy: {auth_target.get('auth', {}).get('strategy')}")
         
         return success
 
