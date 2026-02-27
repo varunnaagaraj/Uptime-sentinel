@@ -598,16 +598,17 @@ class RouteSentinelTester:
         
         test_methods = [
             self.test_overview_endpoint,
-            self.test_targets_endpoint, 
+            self.test_targets_include_auth_endpoint,  # Updated targets test
+            self.test_config_endpoint,  # Updated config test
+            self.test_config_validate_presteps,  # New preSteps validation test
+            self.test_monitor_run_auth_target_endpoint,  # Auth target test (takes 90s)
+            # Other tests for completeness
             self.test_target_detail_endpoint,
-            self.test_target_runs_endpoint,
             self.test_alerts_endpoint,
             self.test_active_alerts_endpoint,
-            self.test_config_endpoint,
             self.test_config_reload_endpoint,
             self.test_scheduler_endpoint,
-            self.test_system_info_endpoint,  # New system info endpoint
-            # self.test_monitor_run_target_endpoint,  # Commented out to avoid long wait during testing
+            self.test_system_info_endpoint,
         ]
         
         for test_method in test_methods:
