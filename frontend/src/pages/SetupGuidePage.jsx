@@ -358,35 +358,107 @@ const AUTH_CONFIG_EXAMPLE = `# ── Form Login Authentication ──
 MYAPP_USERNAME=monitoring-bot@yourcompany.com
 MYAPP_PASSWORD=your-secure-password
 
-# 2. Config entry (monitor_config.json):
+# 2. Simple direct login (one-page form):
 {
   "auth": {
     "strategy": "form",
     "formLogin": {
       "loginUrl": "https://app.yoursite.com/login",
-      "usernameSelector": "#email",         // CSS selector for username input
-      "passwordSelector": "#password",      // CSS selector for password input
-      "submitSelector": "button[type=submit]",  // CSS selector for login button
-      "usernameEnvVar": "MYAPP_USERNAME",   // env var name (NOT the value)
-      "passwordEnvVar": "MYAPP_PASSWORD",   // env var name (NOT the value)
-      "successIndicator": ".dashboard-nav"  // selector that appears after login
+      "usernameSelector": "#email",
+      "passwordSelector": "#password",
+      "submitSelector": "button[type=submit]",
+      "usernameEnvVar": "MYAPP_USERNAME",
+      "passwordEnvVar": "MYAPP_PASSWORD",
+      "successIndicator": ".dashboard-nav"
     }
   }
 }
 
-# 3. How it works:
-#    a) Playwright opens loginUrl in headless Chromium
-#    b) Fills username/password from env vars into the selectors
-#    c) Clicks the submit button
-#    d) Waits for successIndicator to appear (confirms login worked)
-#    e) Reuses the authenticated browser session for ALL route checks
-#    f) If login fails, ALL routes for this target are marked as failed
+# 3. Multi-step login (landing page → click Sign In → login form):
+{
+  "auth": {
+    "strategy": "form",
+    "formLogin": {
+      "preSteps": [
+        {
+          "action": "navigate",
+          "url": "https://app.yoursite.com",
+          "description": "Go to landing page"
+        },
+        {
+          "action": "click",
+          "selector": "a[href='/login'], button:has-text('Sign In')",
+          "description": "Click the Sign In button on landing page"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "#email",
+          "description": "Wait for login form to appear"
+        }
+      ],
+      "usernameSelector": "#email",
+      "passwordSelector": "#password",
+      "submitSelector": "button[type=submit]",
+      "usernameEnvVar": "MYAPP_USERNAME",
+      "passwordEnvVar": "MYAPP_PASSWORD",
+      "successIndicator": ".dashboard-nav"
+    }
+  }
+}`;
 
-# 4. Tips:
-#    - Use a dedicated monitoring account with read-only access
-#    - The successIndicator should be a selector only visible post-login
-#    - Session cookies are shared across all routes for the same target
-#    - If no successIndicator, it checks if URL changed from login page`;
+const PRESTEPS_EXAMPLE = `# preSteps — Available actions:
+#
+# navigate:          Go to a URL
+#   { "action": "navigate", "url": "https://..." }
+#
+# click:             Click an element (waits for navigation after)
+#   { "action": "click", "selector": "button.sign-in" }
+#
+# waitForSelector:   Wait for an element to appear on the page
+#   { "action": "waitForSelector", "selector": "#login-form" }
+#
+# waitForNavigation: Wait for page to finish loading
+#   { "action": "waitForNavigation" }
+#
+# fill:              Type text into an input (useful for multi-page forms)
+#   { "action": "fill", "selector": "#org-name", "value": "mycompany" }
+#
+# waitMs:            Wait a fixed time (last resort)
+#   { "action": "waitMs", "timeoutMs": 2000 }
+#
+# ── Example: SSO-style multi-step login ──
+# Landing page → "Sign In with SSO" → Org selection → Login form
+{
+  "preSteps": [
+    {
+      "action": "navigate",
+      "url": "https://app.example.com",
+      "description": "Open the app"
+    },
+    {
+      "action": "click",
+      "selector": "[data-testid='login-btn']",
+      "description": "Click Sign In on the hero section"
+    },
+    {
+      "action": "waitForSelector",
+      "selector": "#org-selector",
+      "timeoutMs": 10000,
+      "description": "Wait for org selection page"
+    },
+    {
+      "action": "fill",
+      "selector": "#org-name",
+      "value": "mycompany",
+      "description": "Enter organization name"
+    },
+    {
+      "action": "click",
+      "selector": "button.continue",
+      "description": "Continue to login form"
+    }
+  ]
+}`;
 
 const OPERATIONS_CMDS = `# ── Service Management ──
 sudo systemctl restart route-sentinel-backend
