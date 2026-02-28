@@ -69,9 +69,31 @@ export default function ConfigPage() {
       }
       fetchConfig();
     } catch (err) {
-      toast.error(
-        "Reload failed: " + (err.response?.data?.detail || err.message)
-      );
+      const detail = err.response?.data?.detail;
+      const isValidationError =
+        detail &&
+        typeof detail === "object" &&
+        Array.isArray(detail.errors) &&
+        detail.errors.length > 0;
+      if (isValidationError) {
+        const msg = detail.message || "Config validation failed";
+        const errors = detail.errors;
+        console.log(
+          "[monitor_config.json validation errors]",
+          errors.length,
+          "issue(s):",
+          errors
+        );
+        errors.forEach((e, i) => {
+          console.log(`  ${i + 1}. [${e.path || "(root)"}] ${e.message}`);
+        });
+        toast.error(`${msg}: ${errors.length} error(s). See console for details.`);
+      } else {
+        const msg =
+          typeof detail === "string" ? detail : detail?.message || err.message;
+        console.error("[config reload error]", msg, err.response?.data ?? err);
+        toast.error("Reload failed: " + msg);
+      }
     } finally {
       setReloading(false);
     }

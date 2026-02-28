@@ -369,7 +369,12 @@ async def reload_config():
     global monitor_config, config_warnings
     try:
         new_config = load_config(CONFIG_PATH)
-        validate_config_strict(new_config)
+        errors = validate_config(new_config)
+        if errors:
+            raise HTTPException(
+                status_code=400,
+                detail={"message": "Config validation failed", "errors": errors},
+            )
         config_warnings = resolve_env_credentials(new_config)
         monitor_config = new_config
 
@@ -378,6 +383,8 @@ async def reload_config():
         schedule_targets(monitor_config)
 
         return {"success": True, "warnings": config_warnings}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
